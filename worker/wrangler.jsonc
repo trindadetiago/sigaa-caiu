@@ -1,0 +1,18 @@
+{
+  "name": "sigaa-caiu-worker",
+  "main": "src/index.ts",
+  "compatibility_date": "2024-09-23",
+  "triggers": {
+    "crons": ["*/3 * * * *"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "sigaa-caiu-db",
+      "database_id": "99717d91-0563-4319-b9ad-2e2700bbe9d5"
+    }
+  ],
+  "vars": {
+    "ALLOWED_ORIGIN": "http://localhost:3000"
+  }
+}

@@ -1,0 +1,56 @@
+import type { CheckResult, Status } from "./types";
+
+const SIGAA_URL = "https://sigaa.ufpb.br/sigaa/verTelaLogin.do";
+const TIMEOUT_MS = 20_000;
+const THRESHOLD_DEGRADED_MS = 5_000;
+const THRESHOLD_SLOW_MS = 15_000;
+
+export async function performHealthCheck(): Promise<CheckResult> {
+  const start = Date.now();
+
+  try {
+    const res = await fetch(SIGAA_URL, {
+      redirect: "manual",
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+      headers: {
+        "User-Agent": "sigaa-caiu-monitor/1.0",
+      },
+    });
+
+    const responseTimeMs = Date.now() - start;
+    const status = determineStatus(res.status, responseTimeMs);
+
+    return {
+      status,
+      httpCode: res.status,
+      responseTimeMs,
+      error: null,
+    };
+  } catch (err) {
+    const responseTimeMs = Date.now() - start;
+    const message =
+      err instanceof Error ? err.message : "Unknown error";
+
+    return {
+      status: "offline",
+      httpCode: null,
+      responseTimeMs,
+      error: message,
+    };
+  }
+}
+
+function determineStatus(httpCode: number, responseTimeMs: number): Status {
+  // 302 is the expected response from verTelaLogin.do when SIGAA is up
+  const isExpectedResponse = httpCode === 302 || httpCode === 200;
+
+  if (!isExpectedResponse || httpCode >= 500) {
+    return "offline";
+  }
+
+  if (responseTimeMs >= THRESHOLD_DEGRADED_MS) {
+    return "degraded";
+  }
+
+  return "online";
+}
