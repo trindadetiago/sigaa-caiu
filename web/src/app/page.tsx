@@ -80,6 +80,10 @@ export default function Home() {
 
       {/* Detalhes — abaixo da dobra */}
       <section className="max-w-2xl mx-auto px-4 py-16 space-y-10">
+        <p className="text-sm text-neutral-400 text-center">
+          Monitor do SIGAA (Sistema Integrado de Gestao de Atividades Academicas) da UFPB.
+          Verificamos automaticamente se o sistema esta no ar, lento ou fora do ar a cada 3 minutos.
+        </p>
         <UptimeBars history={histories["24h"]} stats={stats} />
         <ResponseTimeChart histories={histories} />
         <IncidentsList incidents={incidents} />
