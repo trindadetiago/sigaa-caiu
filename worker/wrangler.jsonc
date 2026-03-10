@@ -3,7 +3,7 @@
   "main": "src/index.ts",
   "compatibility_date": "2024-09-23",
   "placement": {
-    "mode": "smart"
+    "hostname": "sigaa.ufpb.br"
   },
   "triggers": {
     "crons": ["*/3 * * * *"]
