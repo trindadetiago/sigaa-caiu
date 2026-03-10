@@ -1,36 +1,51 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Web
 
-## Getting Started
+Frontend do SIGAA Caiu — Next.js (App Router) com Tailwind CSS, deployado no Vercel.
 
-First, run the development server:
+## Estrutura
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```
+src/
+  app/
+    layout.tsx              ← layout raiz (metadata, fonts)
+    page.tsx                ← pagina principal (hero + detalhes)
+    globals.css             ← estilos globais
+  components/
+    HeroStatus.tsx          ← status principal com respostas aleatorias
+    UptimeBars.tsx          ← barras de uptime estilo status page (90 dias)
+    ResponseTimeChart.tsx   ← grafico de tempo de resposta (recharts)
+    IncidentsList.tsx       ← lista de incidentes recentes
+  lib/
+    api.ts                  ← fetch wrappers para a API do Worker
+    types.ts                ← tipos TypeScript
+    utils.ts                ← formatadores (tempo, duracao, etc)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Dev local
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm install
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+# Apontar pra API de producao
+NEXT_PUBLIC_API_URL=https://sigaa-caiu-worker.sigaa-caiu.workers.dev npm run dev
 
-## Learn More
+# Ou apontar pro worker local
+npm run dev
+# (usa http://localhost:8787 como fallback)
+```
 
-To learn more about Next.js, take a look at the following resources:
+O frontend roda em `http://localhost:3000`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Build
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npm run build
+```
 
-## Deploy on Vercel
+## Deploy
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+O deploy e automatico via Vercel ao dar push no GitHub.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Configuracao no Vercel:
+- **Root directory:** `web`
+- **Environment variable:** `NEXT_PUBLIC_API_URL` = URL do worker
