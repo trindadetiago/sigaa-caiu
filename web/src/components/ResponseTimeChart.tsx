@@ -100,10 +100,10 @@ export function ResponseTimeChart({ histories }: Props) {
               }}
             />
             <ReferenceLine
-              y={5000}
+              y={10000}
               stroke="#eab308"
               strokeDasharray="4 4"
-              label={{ value: "5s", fill: "#eab308", fontSize: 10 }}
+              label={{ value: "10s", fill: "#eab308", fontSize: 10 }}
             />
             <Line
               type="monotone"

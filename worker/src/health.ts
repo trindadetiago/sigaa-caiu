@@ -1,9 +1,8 @@
 import type { CheckResult, Status } from "./types";
 
 const SIGAA_URL = "https://sigaa.ufpb.br/sigaa/verTelaLogin.do";
-const TIMEOUT_MS = 20_000;
-const THRESHOLD_DEGRADED_MS = 5_000;
-const THRESHOLD_SLOW_MS = 15_000;
+const TIMEOUT_MS = 30_000;
+const THRESHOLD_DEGRADED_MS = 10_000;
 
 export async function performHealthCheck(): Promise<CheckResult> {
   const start = Date.now();
@@ -30,9 +29,11 @@ export async function performHealthCheck(): Promise<CheckResult> {
     const responseTimeMs = Date.now() - start;
     const message =
       err instanceof Error ? err.message : "Unknown error";
+    const isTimeout = message.includes("timed out") || message.includes("TimeoutError");
 
     return {
-      status: "offline",
+      // Timeout = provavelmente offline, mas erros de rede podem ser flap
+      status: isTimeout ? "offline" : "degraded",
       httpCode: null,
       responseTimeMs,
       error: message,
@@ -48,6 +49,7 @@ function determineStatus(httpCode: number, responseTimeMs: number): Status {
     return "offline";
   }
 
+  // SIGAA is naturally slow — only flag degraded at 10s+
   if (responseTimeMs >= THRESHOLD_DEGRADED_MS) {
     return "degraded";
   }
