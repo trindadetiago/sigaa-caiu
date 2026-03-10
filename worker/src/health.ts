@@ -14,7 +14,11 @@ export async function performHealthCheck(): Promise<CheckResult> {
       headers: {
         "User-Agent": "sigaa-caiu-monitor/1.0",
       },
-    });
+      cf: {
+        // Forçar que a request saia do datacenter de São Paulo (GRU)
+        location: { hint: "GRU" },
+      },
+    } as RequestInit);
 
     const responseTimeMs = Date.now() - start;
     const status = determineStatus(res.status, responseTimeMs);
