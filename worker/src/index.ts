@@ -28,7 +28,7 @@ export default {
     env: Env,
     _ctx: ExecutionContext
   ): Promise<Response> {
-    const origin = env.ALLOWED_ORIGIN || "*";
+    const origin = "*";
 
     if (request.method === "OPTIONS") {
       return handlePreflight(origin);

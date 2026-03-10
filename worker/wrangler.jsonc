@@ -12,7 +12,10 @@
       "database_id": "99717d91-0563-4319-b9ad-2e2700bbe9d5"
     }
   ],
-  "vars": {
-    "ALLOWED_ORIGIN": "http://localhost:3000"
+  "observability": {
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true
+    }
   }
 }
