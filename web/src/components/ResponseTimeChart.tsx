@@ -42,9 +42,9 @@ export function ResponseTimeChart({ histories }: Props) {
     })) ?? [];
 
   return (
-    <div className="bg-neutral-900 border border-neutral-800 rounded-lg p-4">
+    <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-4">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-medium text-neutral-300">
+        <h3 className="text-sm font-medium text-neutral-700">
           Tempo de resposta
         </h3>
         <div className="flex gap-1">
@@ -54,8 +54,8 @@ export function ResponseTimeChart({ histories }: Props) {
               onClick={() => setPeriod(p)}
               className={`px-3 py-1 text-xs rounded-md transition-colors ${
                 period === p
-                  ? "bg-neutral-700 text-white"
-                  : "text-neutral-500 hover:text-neutral-300"
+                  ? "bg-neutral-200 text-neutral-900"
+                  : "text-neutral-400 hover:text-neutral-600"
               }`}
             >
               {p}
@@ -65,29 +65,29 @@ export function ResponseTimeChart({ histories }: Props) {
       </div>
 
       {data.length === 0 ? (
-        <div className="h-48 flex items-center justify-center text-neutral-600 text-sm">
+        <div className="h-48 flex items-center justify-center text-neutral-400 text-sm">
           Sem dados para este periodo
         </div>
       ) : (
         <ResponsiveContainer width="100%" height={220}>
           <LineChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#262626" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
             <XAxis
               dataKey="time"
-              tick={{ fontSize: 11, fill: "#737373" }}
+              tick={{ fontSize: 11, fill: "#a3a3a3" }}
               tickLine={false}
               interval="preserveStartEnd"
             />
             <YAxis
-              tick={{ fontSize: 11, fill: "#737373" }}
+              tick={{ fontSize: 11, fill: "#a3a3a3" }}
               tickLine={false}
               axisLine={false}
               tickFormatter={(v) => (v >= 1000 ? `${v / 1000}s` : `${v}ms`)}
             />
             <Tooltip
               contentStyle={{
-                backgroundColor: "#171717",
-                border: "1px solid #333",
+                backgroundColor: "#fff",
+                border: "1px solid #e5e5e5",
                 borderRadius: 8,
                 fontSize: 12,
               }}
