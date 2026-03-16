@@ -1,6 +1,7 @@
 import type { Env } from "./types";
 import { performHealthCheck } from "./health";
 import { saveCheck, getLastNChecks, manageIncidents, cleanupOldChecks } from "./db";
+import { notifyIfNeeded } from "./notify";
 import { handleApiRequest } from "./api";
 import { withCors, handlePreflight } from "./cors";
 
@@ -15,6 +16,7 @@ export default {
 
     await saveCheck(env.DB, result);
     await manageIncidents(env.DB, result, lastChecks);
+    ctx.waitUntil(notifyIfNeeded(env, result, lastChecks));
 
     // Cleanup old data once per day (when minute is 0 on the first cron of the hour)
     const now = new Date();
