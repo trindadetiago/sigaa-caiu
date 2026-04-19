@@ -1,11 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import type { Layers, LayerInfo, LayerStatus } from "@/lib/types";
+import type { Layers, LayerInfo, LayerStatus, HistoryResponse } from "@/lib/types";
 import { timeAgo, formatMs } from "@/lib/utils";
+import { LayerResponseChart } from "@/components/LayerResponseChart";
+
+type Period = "24h" | "7d" | "30d";
 
 interface Props {
   layers?: Layers;
+  histories?: Record<Period, HistoryResponse | null>;
 }
 
 interface LayerDef {
@@ -19,19 +23,6 @@ const LAYER_DEFS: LayerDef[] = [
   { key: "loginForm", label: "Tela de login" },
   { key: "loginE2e", label: "Login completo" },
 ];
-
-function statusIcon(status: LayerStatus): string {
-  switch (status) {
-    case "online":
-      return "✓";
-    case "degraded":
-      return "~";
-    case "offline":
-      return "✗";
-    default:
-      return "·";
-  }
-}
 
 function statusDotColor(status: LayerStatus): string {
   switch (status) {
@@ -75,60 +66,71 @@ function statusTextColor(status: LayerStatus): string {
 function LayerRow({ def, info }: { def: LayerDef; info: LayerInfo | null }) {
   if (!info) {
     return (
-      <div className="flex items-center justify-between py-2 border-b border-neutral-800 last:border-0">
-        <span className="text-neutral-400">{def.label}</span>
-        <span className="text-neutral-500 text-sm">sem dados</span>
+      <div className="flex items-center justify-between py-3">
+        <div className="flex items-center gap-2.5">
+          <div className="w-2 h-2 rounded-full bg-neutral-300" />
+          <span className="text-neutral-400 text-sm">{def.label}</span>
+        </div>
+        <span className="text-neutral-300 text-xs">sem dados</span>
       </div>
     );
   }
 
   return (
-    <div className="flex items-center justify-between py-2 border-b border-neutral-800 last:border-0">
-      <div className="flex items-center gap-2">
+    <div className="flex items-center justify-between py-3">
+      <div className="flex items-center gap-2.5">
         <div className={`w-2 h-2 rounded-full ${statusDotColor(info.status)}`} />
-        <span className="text-neutral-300">{def.label}</span>
+        <span className="text-neutral-600 text-sm">{def.label}</span>
       </div>
-      <div className="flex items-center gap-3 text-sm">
-        <span className={statusTextColor(info.status)}>
+      <div className="flex items-center gap-4 text-xs">
+        <span className={`font-medium ${statusTextColor(info.status)}`}>
           {statusText(info.status)}
         </span>
         {info.responseTimeMs != null && info.responseTimeMs > 0 && (
-          <span className="text-neutral-500">{formatMs(info.responseTimeMs)}</span>
+          <span className="text-neutral-400 tabular-nums w-14 text-right">{formatMs(info.responseTimeMs)}</span>
         )}
-        <span className="text-neutral-600">{timeAgo(info.timestamp)}</span>
+        <span className="text-neutral-300 w-16 text-right">{timeAgo(info.timestamp)}</span>
       </div>
     </div>
   );
 }
 
-export function LayerDetails({ layers }: Props) {
+export function LayerDetails({ layers, histories }: Props) {
   const [open, setOpen] = useState(false);
 
   if (!layers) return null;
 
   return (
-    <div className="w-full max-w-md mx-auto mt-6">
+    <div className="bg-neutral-50 border border-neutral-200 rounded-lg overflow-hidden">
       <button
         onClick={() => setOpen(!open)}
-        className="text-xs text-neutral-500 hover:text-neutral-300 transition-colors flex items-center gap-1 mx-auto"
+        className="w-full px-4 py-3 flex items-center justify-between text-sm font-medium text-neutral-700 hover:bg-neutral-100 transition-colors"
       >
+        <span>Detalhes tecnicos</span>
         <svg
-          className={`w-3 h-3 transition-transform ${open ? "rotate-90" : ""}`}
+          className={`w-4 h-4 text-neutral-400 transition-transform ${open ? "rotate-180" : ""}`}
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
           strokeWidth="2"
         >
-          <path d="M9 18l6-6-6-6" />
+          <path d="M6 9l6 6 6-6" />
         </svg>
-        Detalhes tecnicos
       </button>
 
       {open && (
-        <div className="mt-3 bg-neutral-900 rounded-lg px-4 py-2 border border-neutral-800">
-          {LAYER_DEFS.map((def) => (
-            <LayerRow key={def.key} def={def} info={layers[def.key]} />
-          ))}
+        <div className="border-t border-neutral-200">
+          <div className="px-4 divide-y divide-neutral-100">
+            {LAYER_DEFS.map((def) => (
+              <LayerRow key={def.key} def={def} info={layers[def.key]} />
+            ))}
+          </div>
+
+          {histories && (
+            <div className="border-t border-neutral-200 p-4">
+              <LayerResponseChart histories={histories} />
+            </div>
+          )}
         </div>
       )}
     </div>

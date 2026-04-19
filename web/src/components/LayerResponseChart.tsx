@@ -58,7 +58,7 @@ export function LayerResponseChart({ histories }: Props) {
   );
 
   return (
-    <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-4">
+    <div>
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-medium text-neutral-700">
           Tempo de resposta por camada

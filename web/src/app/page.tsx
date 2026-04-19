@@ -5,7 +5,6 @@ import { HeroStatus } from "@/components/HeroStatus";
 import { LayerDetails } from "@/components/LayerDetails";
 import { UptimeBars } from "@/components/UptimeBars";
 import { ResponseTimeChart } from "@/components/ResponseTimeChart";
-import { LayerResponseChart } from "@/components/LayerResponseChart";
 import { IncidentsList } from "@/components/IncidentsList";
 import {
   fetchStatus,
@@ -71,7 +70,6 @@ export default function Home() {
       {/* Hero — ocupa a tela inteira */}
       <section className="min-h-screen flex flex-col items-center justify-center px-4 relative">
         <HeroStatus data={status} error={error} daysSinceLastIncident={daysSinceLastIncident} />
-        <LayerDetails layers={status?.layers} />
 
         {/* Seta pra descer */}
         <div className="absolute bottom-8 animate-bounce-subtle text-neutral-400">
@@ -91,7 +89,7 @@ export default function Home() {
         </p>
         <UptimeBars history={histories["24h"]} stats={stats} />
         <ResponseTimeChart histories={histories} />
-        <LayerResponseChart histories={histories} />
+        <LayerDetails layers={status?.layers} histories={histories} />
         <IncidentsList incidents={incidents} />
 
         <footer className="text-center pt-8 text-xs text-neutral-400 flex flex-col items-center gap-3">
