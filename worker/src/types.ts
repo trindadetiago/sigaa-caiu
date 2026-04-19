@@ -13,6 +13,7 @@ export interface ReachabilityResult {
 export interface LayerResult {
   status: LayerStatus;
   error: string | null;
+  responseTimeMs: number;
 }
 
 export interface CheckResult {
@@ -41,10 +42,13 @@ export interface CheckRow {
   reachability_ms: number | null;
   reachability_error: string | null;
   portal_status: LayerStatus | null;
+  portal_ms: number | null;
   portal_error: string | null;
   login_form_status: LayerStatus | null;
+  login_form_ms: number | null;
   login_form_error: string | null;
   login_e2e_status: LayerStatus | null;
+  login_e2e_ms: number | null;
   login_e2e_error: string | null;
 }
 
@@ -59,10 +63,15 @@ export interface LastKnownLayer {
   status: LayerStatus;
   error: string | null;
   timestamp: string;
+  responseTimeMs: number | null;
 }
 
+export type LastKnownLayerWithHttp = LastKnownLayer & {
+  httpCode: number | null;
+};
+
 export interface LastKnownLayers {
-  reachability: (LastKnownLayer & { httpCode: number | null; responseTimeMs: number | null }) | null;
+  reachability: LastKnownLayerWithHttp | null;
   portal: LastKnownLayer | null;
   loginForm: LastKnownLayer | null;
   loginE2e: LastKnownLayer | null;

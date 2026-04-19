@@ -1,4 +1,4 @@
-import type { CheckResult, CheckRow, Env, LayerResult, LayerStatus } from "./types";
+import type { CheckResult, CheckRow, Env, LayerStatus } from "./types";
 import { getOpenIncident } from "./db";
 
 export async function notifyIfNeeded(
@@ -67,9 +67,9 @@ function layerSummary(result: CheckResult): string {
     `login_e2e ${icon(result.loginE2e)}`,
   ];
   // Append the failing layer's error for quick diagnosis.
-  const firstFail: LayerResult | null =
+  const failingLayer =
     result.reachability.status === "offline"
-      ? { status: result.reachability.status, error: result.reachability.error }
+      ? result.reachability
       : result.portal.status === "offline"
         ? result.portal
         : result.loginForm.status === "offline"
@@ -77,7 +77,7 @@ function layerSummary(result: CheckResult): string {
           : result.loginE2e.status === "offline"
             ? result.loginE2e
             : null;
-  const suffix = firstFail?.error ? ` (${firstFail.error})` : "";
+  const suffix = failingLayer?.error ? ` (${failingLayer.error})` : "";
   return `_${parts.join(" · ")}${suffix}_`;
 }
 

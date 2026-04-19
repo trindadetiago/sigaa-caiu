@@ -150,6 +150,7 @@ function determineReachabilityStatus(httpCode: number, responseTimeMs: number): 
 // --- Layer 2: public portal SPA ---
 
 async function checkPortal(): Promise<LayerResult> {
+  const start = Date.now();
   try {
     const res = await fetch(PORTAL_URL, {
       redirect: "follow",
@@ -157,17 +158,17 @@ async function checkPortal(): Promise<LayerResult> {
       headers: { "User-Agent": USER_AGENT },
     });
 
-    if (res.status !== 200) return { status: "offline", error: `portal_http_${res.status}` };
+    if (res.status !== 200) return { status: "offline", error: `portal_http_${res.status}`, responseTimeMs: Date.now() - start };
 
     const body = await res.text();
 
     if (!body.includes('id="root"')) {
-      return { status: "offline", error: "portal_html_missing_root" };
+      return { status: "offline", error: "portal_html_missing_root", responseTimeMs: Date.now() - start };
     }
 
     const match = body.match(BUNDLE_REGEX);
     if (!match) {
-      return { status: "offline", error: "portal_html_missing_bundle" };
+      return { status: "offline", error: "portal_html_missing_bundle", responseTimeMs: Date.now() - start };
     }
 
     const bundleRes = await fetch(PORTAL_ORIGIN + match[0], {
@@ -177,19 +178,20 @@ async function checkPortal(): Promise<LayerResult> {
     });
 
     if (bundleRes.status !== 200) {
-      return { status: "offline", error: `portal_bundle_http_${bundleRes.status}` };
+      return { status: "offline", error: `portal_bundle_http_${bundleRes.status}`, responseTimeMs: Date.now() - start };
     }
 
-    return { status: "online", error: null };
+    return { status: "online", error: null, responseTimeMs: Date.now() - start };
   } catch (err) {
     const message = err instanceof Error ? err.message : "unknown";
-    return { status: "offline", error: `portal_fetch_error: ${message}` };
+    return { status: "offline", error: `portal_fetch_error: ${message}`, responseTimeMs: Date.now() - start };
   }
 }
 
 // --- Layer 3: JSF login form renders ---
 
 async function checkLoginForm(): Promise<LayerResult> {
+  const start = Date.now();
   try {
     const res = await fetch(LOGIN_FORM_URL, {
       redirect: "follow",
@@ -197,66 +199,66 @@ async function checkLoginForm(): Promise<LayerResult> {
       headers: { "User-Agent": USER_AGENT },
     });
 
-    if (res.status !== 200) return { status: "offline", error: `login_form_http_${res.status}` };
+    if (res.status !== 200) return { status: "offline", error: `login_form_http_${res.status}`, responseTimeMs: Date.now() - start };
 
     const body = await res.text();
 
     if (!body.includes('name="javax.faces.ViewState"')) {
-      return { status: "offline", error: "login_form_missing_viewstate" };
+      return { status: "offline", error: "login_form_missing_viewstate", responseTimeMs: Date.now() - start };
     }
 
     if (!body.includes('name="form:login"') || !body.includes('name="form:senha"')) {
-      return { status: "offline", error: "login_form_missing_inputs" };
+      return { status: "offline", error: "login_form_missing_inputs", responseTimeMs: Date.now() - start };
     }
 
     if (!body.includes('action="/sigaa/logon.jsf')) {
-      return { status: "offline", error: "login_form_wrong_action" };
+      return { status: "offline", error: "login_form_wrong_action", responseTimeMs: Date.now() - start };
     }
 
-    return { status: "online", error: null };
+    return { status: "online", error: null, responseTimeMs: Date.now() - start };
   } catch (err) {
     const message = err instanceof Error ? err.message : "unknown";
-    return { status: "offline", error: `login_form_fetch_error: ${message}` };
+    return { status: "offline", error: `login_form_fetch_error: ${message}`, responseTimeMs: Date.now() - start };
   }
 }
 
 // --- Layer 4: end-to-end login with real credentials ---
 
 async function checkLoginE2E(user: string, pass: string): Promise<LayerResult> {
+  const start = Date.now();
   try {
     // Step 1: bogus login — should be rejected fast. A slow rejection
     // signals auth-backend stress even if it's technically alive.
     const bogusResult = await attemptLogin("sigaa_monitor_bogus_" + Date.now(), "wrong_password_xyz");
     if (bogusResult.error === "prelogin_failed") {
-      return { status: "offline", error: `e2e_prelogin_http_${bogusResult.detail}` };
+      return { status: "offline", error: `e2e_prelogin_http_${bogusResult.detail}`, responseTimeMs: Date.now() - start };
     }
     if (bogusResult.error === "prelogin_missing_viewstate") {
-      return { status: "offline", error: "e2e_missing_viewstate" };
+      return { status: "offline", error: "e2e_missing_viewstate", responseTimeMs: Date.now() - start };
     }
     if (bogusResult.error === "prelogin_missing_action") {
-      return { status: "offline", error: "e2e_missing_action" };
+      return { status: "offline", error: "e2e_missing_action", responseTimeMs: Date.now() - start };
     }
     if (bogusResult.outcome !== "rejected") {
-      // Bogus creds weren't rejected as expected — auth is broken.
-      return { status: "offline", error: `e2e_bogus_unexpected: ${bogusResult.outcome}` };
+      return { status: "offline", error: `e2e_bogus_unexpected: ${bogusResult.outcome}`, responseTimeMs: Date.now() - start };
     }
     if (bogusResult.durationMs > THRESHOLD_DEGRADED_MS) {
-      // Auth backend took too long to reject garbage creds — stressed.
-      return { status: "degraded", error: `e2e_bogus_login_slow_${bogusResult.durationMs}ms` };
+      return { status: "degraded", error: `e2e_bogus_login_slow_${bogusResult.durationMs}ms`, responseTimeMs: Date.now() - start };
     }
 
     // Step 2: real login — should succeed.
     const realResult = await attemptLogin(user, pass);
+    const totalMs = Date.now() - start;
     if (realResult.outcome === "success") {
-      return { status: "online", error: null };
+      return { status: "online", error: null, responseTimeMs: totalMs };
     }
     if (realResult.outcome === "rejected") {
-      return { status: "offline", error: "e2e_login_rejected" };
+      return { status: "offline", error: "e2e_login_rejected", responseTimeMs: totalMs };
     }
-    return { status: "offline", error: `e2e_login_${realResult.outcome}` };
+    return { status: "offline", error: `e2e_login_${realResult.outcome}`, responseTimeMs: totalMs };
   } catch (err) {
     const message = err instanceof Error ? err.message : "unknown";
-    return { status: "offline", error: `e2e_login_fetch_error: ${message}` };
+    return { status: "offline", error: `e2e_login_fetch_error: ${message}`, responseTimeMs: Date.now() - start };
   }
 }
 
@@ -362,7 +364,7 @@ function buildCookieHeader(setCookies: string[]): string {
 // --- Helpers ---
 
 function skipped(): LayerResult {
-  return { status: "skipped", error: null };
+  return { status: "skipped", error: null, responseTimeMs: 0 };
 }
 
 function sleep(ms: number): Promise<void> {

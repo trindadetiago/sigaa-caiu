@@ -11,10 +11,13 @@ CREATE TABLE IF NOT EXISTS checks (
   reachability_ms     INTEGER,
   reachability_error  TEXT,
   portal_status       TEXT,
+  portal_ms           INTEGER,
   portal_error        TEXT,
   login_form_status   TEXT,
+  login_form_ms       INTEGER,
   login_form_error    TEXT,
   login_e2e_status    TEXT,
+  login_e2e_ms        INTEGER,
   login_e2e_error     TEXT
 );
 
