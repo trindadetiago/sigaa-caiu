@@ -77,8 +77,10 @@ function layerSummary(result: CheckResult): string {
           : result.loginE2e.status === "offline"
             ? result.loginE2e
             : null;
-  const suffix = failingLayer?.error ? ` (${failingLayer.error})` : "";
-  return `_${parts.join(" · ")}${suffix}_`;
+  const escapeMd = (s: string) => s.replace(/([_*`\[\]()])/g, "\\$1");
+  const body = `_${parts.join(" · ")}_`;
+  const suffix = failingLayer?.error ? ` (${escapeMd(failingLayer.error)})` : "";
+  return body + suffix;
 }
 
 async function sendTelegram(env: Env, text: string): Promise<void> {

@@ -171,14 +171,23 @@ async function checkPortal(): Promise<LayerResult> {
       return { status: "offline", error: "portal_html_missing_bundle", responseTimeMs: Date.now() - start };
     }
 
-    const bundleRes = await fetch(PORTAL_ORIGIN + match[0], {
+    const bundleUrl = PORTAL_ORIGIN + match[0];
+    const bundleRes = await fetch(bundleUrl, {
       method: "HEAD",
       signal: AbortSignal.timeout(TIMEOUT_MS),
       headers: { "User-Agent": USER_AGENT },
     });
 
+    // Some CDNs return 405/501 for HEAD — fall back to a ranged GET.
     if (bundleRes.status !== 200) {
-      return { status: "offline", error: `portal_bundle_http_${bundleRes.status}`, responseTimeMs: Date.now() - start };
+      const fallback = await fetch(bundleUrl, {
+        method: "GET",
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+        headers: { "User-Agent": USER_AGENT, Range: "bytes=0-0" },
+      });
+      if (fallback.status !== 200 && fallback.status !== 206) {
+        return { status: "offline", error: `portal_bundle_http_${fallback.status}`, responseTimeMs: Date.now() - start };
+      }
     }
 
     return { status: "online", error: null, responseTimeMs: Date.now() - start };
@@ -333,13 +342,20 @@ async function attemptLogin(user: string, pass: string): Promise<LoginAttempt> {
     if (location.includes("/portal/discente") || location.includes("/portais/discente")) {
       return { outcome: "success", durationMs };
     }
-    return { outcome: `unexpected_redirect_${location}`, durationMs };
+    const safeLoc = location.split(/[;?]/)[0].slice(0, 120);
+    return { outcome: `unexpected_redirect_${safeLoc}`, durationMs };
   }
 
   // 200 = stayed on login page.
   if (postRes.status === 200) {
     const respBody = await postRes.text();
+    // Check for rejection message (tolerant of encoding variants).
     if (respBody.includes("inv&#225;lidos") || respBody.includes("inválidos")) {
+      return { outcome: "rejected", durationMs };
+    }
+    // Fallback: if the login form is still present, treat as rejection even
+    // if SIGAA rewords the error message.
+    if (respBody.includes('name="form:login"') && respBody.includes('name="form:senha"')) {
       return { outcome: "rejected", durationMs };
     }
     return { outcome: "unexpected_200", durationMs };
