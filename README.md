@@ -2,7 +2,7 @@
 
 Monitor em tempo real do [SIGAA da UFPB](https://sigaa.ufpb.br). Verifica automaticamente se o sistema esta no ar, lento ou fora do ar a cada 3 minutos.
 
-**Site:** [sigaa-caiu.vercel.app](https://sigaa-caiu.vercel.app)
+**Site:** [sigaacaiu.com](https://sigaacaiu.com)
 
 ## Como funciona
 

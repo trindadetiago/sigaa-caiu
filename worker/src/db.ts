@@ -1,4 +1,10 @@
-import type { CheckResult, CheckRow, IncidentRow } from "./types";
+import type {
+  CheckResult,
+  CheckRow,
+  IncidentRow,
+  LastKnownLayers,
+  LayerStatus,
+} from "./types";
 
 // --- Write operations ---
 
@@ -6,12 +12,40 @@ export async function saveCheck(
   db: D1Database,
   result: CheckResult
 ): Promise<void> {
+  // Skipped layers persist as NULL so getLastKnownLayers only picks up ticks
+  // where the layer actually ran.
+  const skippedToNull = (s: LayerStatus): string | null =>
+    s === "skipped" ? null : s;
+
   await db
     .prepare(
-      `INSERT INTO checks (status, http_code, response_time_ms, error)
-       VALUES (?, ?, ?, ?)`
+      `INSERT INTO checks (
+         status, http_code, response_time_ms, error,
+         reachability_status, reachability_http, reachability_ms, reachability_error,
+         portal_status, portal_ms, portal_error,
+         login_form_status, login_form_ms, login_form_error,
+         login_e2e_status, login_e2e_ms, login_e2e_error
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
-    .bind(result.status, result.httpCode, result.responseTimeMs, result.error)
+    .bind(
+      result.status,
+      result.httpCode,
+      result.responseTimeMs,
+      result.error,
+      skippedToNull(result.reachability.status),
+      result.reachability.httpCode,
+      result.reachability.responseTimeMs,
+      result.reachability.error,
+      skippedToNull(result.portal.status),
+      result.portal.responseTimeMs || null,
+      result.portal.error,
+      skippedToNull(result.loginForm.status),
+      result.loginForm.responseTimeMs || null,
+      result.loginForm.error,
+      skippedToNull(result.loginE2e.status),
+      result.loginE2e.responseTimeMs || null,
+      result.loginE2e.error
+    )
     .run();
 }
 
@@ -157,6 +191,89 @@ export async function getStats(
   }
 
   return stats;
+}
+
+export async function getLastKnownLayers(
+  db: D1Database
+): Promise<LastKnownLayers> {
+  // Most recent non-null value for each layer, independent of the others.
+  // One round-trip query per layer keeps the SQL simple; SQLite is local.
+  const latest = async <T>(selectCols: string, whereNonNull: string): Promise<T | null> =>
+    db
+      .prepare(
+        `SELECT ${selectCols}, timestamp FROM checks
+         WHERE ${whereNonNull} IS NOT NULL
+         ORDER BY timestamp DESC LIMIT 1`
+      )
+      .first<T>();
+
+  const reachability = await latest<{
+    reachability_status: LayerStatus;
+    reachability_http: number | null;
+    reachability_ms: number | null;
+    reachability_error: string | null;
+    timestamp: string;
+  }>(
+    "reachability_status, reachability_http, reachability_ms, reachability_error",
+    "reachability_status"
+  );
+
+  const portal = await latest<{
+    portal_status: LayerStatus;
+    portal_ms: number | null;
+    portal_error: string | null;
+    timestamp: string;
+  }>("portal_status, portal_ms, portal_error", "portal_status");
+
+  const loginForm = await latest<{
+    login_form_status: LayerStatus;
+    login_form_ms: number | null;
+    login_form_error: string | null;
+    timestamp: string;
+  }>("login_form_status, login_form_ms, login_form_error", "login_form_status");
+
+  const loginE2e = await latest<{
+    login_e2e_status: LayerStatus;
+    login_e2e_ms: number | null;
+    login_e2e_error: string | null;
+    timestamp: string;
+  }>("login_e2e_status, login_e2e_ms, login_e2e_error", "login_e2e_status");
+
+  return {
+    reachability: reachability
+      ? {
+          status: reachability.reachability_status,
+          error: reachability.reachability_error,
+          timestamp: reachability.timestamp,
+          httpCode: reachability.reachability_http,
+          responseTimeMs: reachability.reachability_ms,
+        }
+      : null,
+    portal: portal
+      ? {
+          status: portal.portal_status,
+          error: portal.portal_error,
+          timestamp: portal.timestamp,
+          responseTimeMs: portal.portal_ms,
+        }
+      : null,
+    loginForm: loginForm
+      ? {
+          status: loginForm.login_form_status,
+          error: loginForm.login_form_error,
+          timestamp: loginForm.timestamp,
+          responseTimeMs: loginForm.login_form_ms,
+        }
+      : null,
+    loginE2e: loginE2e
+      ? {
+          status: loginE2e.login_e2e_status,
+          error: loginE2e.login_e2e_error,
+          timestamp: loginE2e.timestamp,
+          responseTimeMs: loginE2e.login_e2e_ms,
+        }
+      : null,
+  };
 }
 
 export async function getRecentIncidents(

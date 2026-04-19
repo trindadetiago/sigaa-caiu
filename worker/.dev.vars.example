@@ -1,0 +1,6 @@
+# Copy to .dev.vars for local wrangler dev (gitignored).
+# In production, set these via: npx wrangler secret put <NAME>
+SIGAA_MONITOR_USER=your_sigaa_username
+SIGAA_MONITOR_PASS=your_sigaa_password
+TELEGRAM_BOT_TOKEN=your_bot_token
+TELEGRAM_CHAT_ID=your_chat_id

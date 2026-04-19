@@ -5,6 +5,7 @@ import {
   getHistory,
   getStats,
   getRecentIncidents,
+  getLastKnownLayers,
 } from "./db";
 
 export async function handleApiRequest(
@@ -72,6 +73,8 @@ async function handleStatus(env: Env): Promise<Response> {
   const confirmed =
     latestStatus !== "offline" || consecutiveFailures >= 2;
 
+  const layers = await getLastKnownLayers(env.DB);
+
   return json({
     status: latestStatus,
     confirmed,
@@ -83,6 +86,7 @@ async function handleStatus(env: Env): Promise<Response> {
     },
     consecutiveFailures,
     currentIncident: openIncident,
+    layers,
   });
 }
 
@@ -134,7 +138,7 @@ const DOCS_HTML = `<!DOCTYPE html>
 
 <h2><span class="method">GET</span> <code>/api/status</code></h2>
 <div class="endpoint">
-<p>Status atual do SIGAA.</p>
+<p>Status atual do SIGAA com detalhamento por camada de verificacao.</p>
 <pre><code>{
   "status": "online",
   "confirmed": true,
@@ -145,14 +149,29 @@ const DOCS_HTML = `<!DOCTYPE html>
     "responseTimeMs": 724
   },
   "consecutiveFailures": 0,
-  "currentIncident": null
+  "currentIncident": null,
+  "layers": {
+    "reachability": { "status": "online", "error": null, "timestamp": "...", "httpCode": 302, "responseTimeMs": 479 },
+    "portal":       { "status": "online", "error": null, "timestamp": "..." },
+    "loginForm":    { "status": "online", "error": null, "timestamp": "..." },
+    "loginE2e":     { "status": "online", "error": null, "timestamp": "..." }
+  }
 }</code></pre>
 <table>
 <tr><th>Campo</th><th>Descricao</th></tr>
-<tr><td><code>status</code></td><td><code>online</code>, <code>degraded</code> ou <code>offline</code></td></tr>
+<tr><td><code>status</code></td><td><code>online</code>, <code>degraded</code> ou <code>offline</code> (derivado das camadas)</td></tr>
 <tr><td><code>confirmed</code></td><td><code>false</code> se houve apenas 1 falha (possivel instabilidade de rede)</td></tr>
 <tr><td><code>consecutiveFailures</code></td><td>Numero de falhas consecutivas</td></tr>
 <tr><td><code>currentIncident</code></td><td>Incidente em andamento, se houver</td></tr>
+<tr><td><code>layers</code></td><td>Status individual de cada camada de verificacao (ver abaixo)</td></tr>
+</table>
+<p style="margin-top:1rem"><strong>Camadas de verificacao:</strong></p>
+<table>
+<tr><th>Camada</th><th>O que verifica</th></tr>
+<tr><td><code>reachability</code></td><td>Servidor acessivel (GET verTelaLogin.do, espera 302)</td></tr>
+<tr><td><code>portal</code></td><td>Portal publico carrega (SPA /publico/ com bundle JS)</td></tr>
+<tr><td><code>loginForm</code></td><td>Tela de login renderiza (JSF com ViewState e campos de login)</td></tr>
+<tr><td><code>loginE2e</code></td><td>Login completo funciona (POST com credenciais reais)</td></tr>
 </table>
 </div>
 
@@ -202,7 +221,7 @@ const DOCS_HTML = `<!DOCTYPE html>
 </div>
 
 <footer>
-  Verifica o SIGAA a cada 3 minutos · <a href="https://github.com/trindadetiago/sigaa-caiu">GitHub</a>
+  Verifica o SIGAA a cada 3 minutos com 4 camadas de verificacao · <a href="https://github.com/trindadetiago/sigaa-caiu">GitHub</a>
 </footer>
 </body>
 </html>`;
