@@ -11,7 +11,7 @@ export default {
     env: Env,
     ctx: ExecutionContext
   ): Promise<void> {
-    const result = await performHealthCheck();
+    const result = await performHealthCheck(env, true);
     const lastChecks = await getLastNChecks(env.DB, 2);
 
     await saveCheck(env.DB, result);

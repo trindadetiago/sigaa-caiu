@@ -1,4 +1,4 @@
-import type { CheckResult, CheckRow, Env } from "./types";
+import type { CheckResult, CheckRow, Env, LayerResult, LayerStatus } from "./types";
 import { getOpenIncident } from "./db";
 
 export async function notifyIfNeeded(
@@ -23,7 +23,9 @@ export async function notifyIfNeeded(
       env,
       "🔴 *SIGAA caiu!*\n\n" +
         `Erro: ${result.error || "HTTP " + result.httpCode}\n` +
-        `Tempo de resposta: ${result.responseTimeMs}ms\n\n` +
+        `Tempo de resposta: ${result.responseTimeMs}ms\n` +
+        layerSummary(result) +
+        "\n\n" +
         `[Ver status](https://sigaacaiu.com)`
     );
   }
@@ -35,12 +37,48 @@ export async function notifyIfNeeded(
       await sendTelegram(
         env,
         "🟢 *SIGAA voltou!*\n\n" +
-          `Tempo de resposta: ${result.responseTimeMs}ms\n\n` +
+          `Tempo de resposta: ${result.responseTimeMs}ms\n` +
+          layerSummary(result) +
+          "\n\n" +
           `[Ver status](https://sigaacaiu.com)`
       );
     }
     // If no open incident, it was just a single flap — ignore
   }
+}
+
+function layerSummary(result: CheckResult): string {
+  const icon = (l: { status: LayerStatus }): string => {
+    switch (l.status) {
+      case "online":
+        return "✓";
+      case "degraded":
+        return "~";
+      case "offline":
+        return "✗";
+      default:
+        return "·";
+    }
+  };
+  const parts = [
+    `reachability ${icon(result.reachability)}`,
+    `portal ${icon(result.portal)}`,
+    `login_form ${icon(result.loginForm)}`,
+    `login_e2e ${icon(result.loginE2e)}`,
+  ];
+  // Append the failing layer's error for quick diagnosis.
+  const firstFail: LayerResult | null =
+    result.reachability.status === "offline"
+      ? { status: result.reachability.status, error: result.reachability.error }
+      : result.portal.status === "offline"
+        ? result.portal
+        : result.loginForm.status === "offline"
+          ? result.loginForm
+          : result.loginE2e.status === "offline"
+            ? result.loginE2e
+            : null;
+  const suffix = firstFail?.error ? ` (${firstFail.error})` : "";
+  return `_${parts.join(" · ")}${suffix}_`;
 }
 
 async function sendTelegram(env: Env, text: string): Promise<void> {

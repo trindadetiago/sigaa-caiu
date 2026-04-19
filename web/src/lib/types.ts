@@ -16,6 +16,23 @@ export interface Incident {
   duration_s: number | null;
 }
 
+export type LayerStatus = "online" | "degraded" | "offline" | "skipped";
+
+export interface LayerInfo {
+  status: LayerStatus;
+  error: string | null;
+  timestamp: string;
+  httpCode?: number | null;
+  responseTimeMs?: number | null;
+}
+
+export interface Layers {
+  reachability: LayerInfo | null;
+  portal: LayerInfo | null;
+  loginForm: LayerInfo | null;
+  loginE2e: LayerInfo | null;
+}
+
 export interface StatusResponse {
   status: Status;
   confirmed: boolean;
@@ -27,6 +44,7 @@ export interface StatusResponse {
   } | null;
   consecutiveFailures: number;
   currentIncident: Incident | null;
+  layers?: Layers;
 }
 
 export interface HistoryResponse {
