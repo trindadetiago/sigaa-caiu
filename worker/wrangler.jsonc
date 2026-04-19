@@ -1,5 +1,6 @@
 {
   "name": "sigaa-caiu-worker",
+  "account_id": "cc65cce3bf0363f09d9efd075f9077f1",
   "main": "src/index.ts",
   "compatibility_date": "2024-09-23",
   "placement": {
