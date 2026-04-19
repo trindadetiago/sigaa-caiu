@@ -143,7 +143,20 @@ export async function getHistory(
          END as status,
          ROUND(AVG(http_code)) as http_code,
          ROUND(AVG(response_time_ms)) as response_time_ms,
-         NULL as error
+         NULL as error,
+         NULL as reachability_status,
+         ROUND(AVG(reachability_http)) as reachability_http,
+         ROUND(AVG(reachability_ms)) as reachability_ms,
+         NULL as reachability_error,
+         NULL as portal_status,
+         ROUND(AVG(portal_ms)) as portal_ms,
+         NULL as portal_error,
+         NULL as login_form_status,
+         ROUND(AVG(login_form_ms)) as login_form_ms,
+         NULL as login_form_error,
+         NULL as login_e2e_status,
+         ROUND(AVG(login_e2e_ms)) as login_e2e_ms,
+         NULL as login_e2e_error
        FROM checks
        WHERE timestamp >= datetime('now', ?)
        GROUP BY strftime('%Y-%m-%dT%H:', timestamp) ||

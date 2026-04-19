@@ -7,6 +7,10 @@ export interface Check {
   http_code: number | null;
   response_time_ms: number;
   error: string | null;
+  reachability_ms: number | null;
+  portal_ms: number | null;
+  login_form_ms: number | null;
+  login_e2e_ms: number | null;
 }
 
 export interface Incident {

@@ -5,6 +5,7 @@ import { HeroStatus } from "@/components/HeroStatus";
 import { LayerDetails } from "@/components/LayerDetails";
 import { UptimeBars } from "@/components/UptimeBars";
 import { ResponseTimeChart } from "@/components/ResponseTimeChart";
+import { LayerResponseChart } from "@/components/LayerResponseChart";
 import { IncidentsList } from "@/components/IncidentsList";
 import {
   fetchStatus,
@@ -85,10 +86,12 @@ export default function Home() {
       <section className="max-w-2xl mx-auto px-4 py-16 space-y-10">
         <p className="text-sm text-neutral-400 text-center">
           Monitor do SIGAA (Sistema Integrado de Gestao de Atividades Academicas) da UFPB.
-          Verificamos automaticamente se o sistema esta no ar, lento ou fora do ar a cada 3 minutos.
+          Verificamos automaticamente se o sistema esta no ar, lento ou fora do ar a cada 3 minutos
+          com 4 camadas: acesso ao servidor, portal publico, tela de login e login completo.
         </p>
         <UptimeBars history={histories["24h"]} stats={stats} />
         <ResponseTimeChart histories={histories} />
+        <LayerResponseChart histories={histories} />
         <IncidentsList incidents={incidents} />
 
         <footer className="text-center pt-8 text-xs text-neutral-400 flex flex-col items-center gap-3">
