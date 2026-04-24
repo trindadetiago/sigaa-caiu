@@ -71,7 +71,7 @@ export default function Home() {
     <>
       {/* Hero — ocupa a tela inteira */}
       <section className="min-h-screen flex flex-col items-center justify-center px-4 relative">
-        <HeroStatus data={status} error={error} daysSinceLastIncident={daysSinceLastIncident} />
+        <HeroStatus data={status} error={error} daysSinceLastIncident={daysSinceLastIncident} incidents={incidents} />
 
         {/* Seta pra descer */}
         <div className="absolute bottom-8 animate-bounce-subtle text-neutral-400">

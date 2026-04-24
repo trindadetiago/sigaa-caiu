@@ -1,13 +1,14 @@
 "use client";
 
 import { useMemo } from "react";
-import type { StatusResponse } from "@/lib/types";
+import type { StatusResponse, Incident } from "@/lib/types";
 import { formatMs, timeAgo } from "@/lib/utils";
 
 interface Props {
   data: StatusResponse | null;
   error: boolean;
   daysSinceLastIncident: number | null;
+  incidents: Incident[] | null;
 }
 
 function pickRandom<T>(arr: T[]): T {
@@ -48,7 +49,22 @@ const CHECKING_RESPONSES = [
   { emoji: "🔍", text: "Investigando...", sub: "Pode ter sido so um soluço." },
 ];
 
-export function HeroStatus({ data, error, daysSinceLastIncident }: Props) {
+const RECOVERING_RESPONSES = [
+  { emoji: "🤞", text: "Parece que voltou", sub: "Mas nao confia nao, caiu agora pouco." },
+  { emoji: "👀", text: "Voltou... sera?", sub: "Ainda ta quente, fica de olho." },
+  { emoji: "😅", text: "Voltou, mas...", sub: "Acabou de cair. Nao bota muita fe nao." },
+  { emoji: "⚠️", text: "Ta no ar de novo", sub: "Caiu faz pouco, pode oscilar ainda." },
+];
+
+export function HeroStatus({ data, error, daysSinceLastIncident, incidents }: Props) {
+  const recentlyRecovered = useMemo(() => {
+    if (!incidents || incidents.length === 0) return false;
+    const lastIncident = incidents[0];
+    if (!lastIncident.ended_at) return false;
+    const endedAgo = Date.now() - new Date(lastIncident.ended_at).getTime();
+    return endedAgo < 10 * 60 * 1000; // 10 minutes
+  }, [incidents]);
+
   const response = useMemo(() => {
     if (error) return null;
     if (!data || !data.lastCheck) return null;
@@ -60,9 +76,10 @@ export function HeroStatus({ data, error, daysSinceLastIncident }: Props) {
     if (isDown) return pickRandom(DOWN_RESPONSES);
     if (isSlow) return pickRandom(SLOW_RESPONSES);
     if (isChecking) return pickRandom(CHECKING_RESPONSES);
+    if (recentlyRecovered) return pickRandom(RECOVERING_RESPONSES);
     return pickRandom(ONLINE_RESPONSES);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data?.status, data?.confirmed, error]);
+  }, [data?.status, data?.confirmed, error, recentlyRecovered]);
 
   if (error) {
     return (
@@ -94,11 +111,11 @@ export function HeroStatus({ data, error, daysSinceLastIncident }: Props) {
   }
 
   const statusColor =
-    data.status === "online"
-      ? "text-green-500"
-      : data.status === "degraded"
+    data.status === "offline"
+      ? "text-red-500"
+      : data.status === "degraded" || recentlyRecovered
         ? "text-yellow-500"
-        : "text-red-500";
+        : "text-green-500";
 
   return (
     <div className="text-center">
