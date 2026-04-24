@@ -18,10 +18,26 @@ function groupChecksByDay(checks: Check[]): Map<string, Check[]> {
 }
 
 function dayStatus(checks: Check[]): "online" | "degraded" | "offline" {
-  const hasOffline = checks.some((c) => c.status === "offline");
+  // Consecutive offline checks = confirmed outage = red.
+  // Isolated offline (no consecutive pair) = yellow (unconfirmed blip).
+  let hasConsecutiveOffline = false;
+  let hasIsolatedOffline = false;
   const hasDegraded = checks.some((c) => c.status === "degraded");
-  if (hasOffline) return "offline";
-  if (hasDegraded) return "degraded";
+
+  for (let i = 0; i < checks.length; i++) {
+    if (checks[i].status === "offline") {
+      const prevOffline = i > 0 && checks[i - 1].status === "offline";
+      const nextOffline = i < checks.length - 1 && checks[i + 1].status === "offline";
+      if (prevOffline || nextOffline) {
+        hasConsecutiveOffline = true;
+      } else {
+        hasIsolatedOffline = true;
+      }
+    }
+  }
+
+  if (hasConsecutiveOffline) return "offline";
+  if (hasIsolatedOffline || hasDegraded) return "degraded";
   return "online";
 }
 
