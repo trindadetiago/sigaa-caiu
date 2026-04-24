@@ -128,8 +128,8 @@ export async function getHistory(
     return result.results;
   }
 
-  // For 7d and 30d, downsample by grouping into time buckets
-  const bucketMinutes = period === "7d" ? 15 : 60;
+  // For 7d/30d/90d, downsample by grouping into time buckets
+  const bucketMinutes = period === "7d" ? 15 : period === "30d" ? 60 : 180;
 
   const result = await db
     .prepare(
@@ -171,7 +171,7 @@ export async function getHistory(
 export async function getStats(
   db: D1Database
 ): Promise<Record<string, { uptimePercent: number; avgResponseMs: number; incidentCount: number }>> {
-  const periods = ["24h", "7d", "30d"] as const;
+  const periods = ["24h", "7d", "30d", "90d"] as const;
   const stats: Record<string, { uptimePercent: number; avgResponseMs: number; incidentCount: number }> = {};
 
   for (const period of periods) {
@@ -308,6 +308,8 @@ function periodToInterval(period: string): string {
       return "-7 days";
     case "30d":
       return "-30 days";
+    case "90d":
+      return "-90 days";
     default:
       return "-24 hours";
   }

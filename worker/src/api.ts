@@ -21,8 +21,8 @@ export async function handleApiRequest(
 
   if (path === "/api/history") {
     const period = url.searchParams.get("period") || "24h";
-    if (!["24h", "7d", "30d"].includes(period)) {
-      return json({ error: "Invalid period. Use: 24h, 7d, 30d" }, 400);
+    if (!["24h", "7d", "30d", "90d"].includes(period)) {
+      return json({ error: "Invalid period. Use: 24h, 7d, 30d, 90d" }, 400);
     }
     return handleHistory(env, period);
   }

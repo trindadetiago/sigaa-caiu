@@ -20,7 +20,7 @@ export function fetchStatus(): Promise<StatusResponse> {
 }
 
 export function fetchHistory(
-  period: "24h" | "7d" | "30d"
+  period: "24h" | "7d" | "30d" | "90d"
 ): Promise<HistoryResponse> {
   return fetchApi(`/api/history?period=${period}`);
 }

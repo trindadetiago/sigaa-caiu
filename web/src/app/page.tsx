@@ -20,14 +20,15 @@ import type {
 } from "@/lib/types";
 
 type Period = "24h" | "7d" | "30d";
+type AllPeriod = Period | "90d";
 
 export default function Home() {
   const [status, setStatus] = useState<StatusResponse | null>(null);
   const [stats, setStats] = useState<StatsResponse | null>(null);
   const [incidents, setIncidents] = useState<Incident[] | null>(null);
   const [histories, setHistories] = useState<
-    Record<Period, HistoryResponse | null>
-  >({ "24h": null, "7d": null, "30d": null });
+    Record<AllPeriod, HistoryResponse | null>
+  >({ "24h": null, "7d": null, "30d": null, "90d": null });
   const [error, setError] = useState(false);
 
   // Calculate days since last incident
@@ -39,7 +40,7 @@ export default function Home() {
 
   const loadData = useCallback(async () => {
     try {
-      const [statusRes, statsRes, incidentsRes, h24, h7d, h30d] =
+      const [statusRes, statsRes, incidentsRes, h24, h7d, h30d, h90d] =
         await Promise.all([
           fetchStatus(),
           fetchStats(),
@@ -47,12 +48,13 @@ export default function Home() {
           fetchHistory("24h"),
           fetchHistory("7d"),
           fetchHistory("30d"),
+          fetchHistory("90d"),
         ]);
 
       setStatus(statusRes);
       setStats(statsRes);
       setIncidents(incidentsRes.incidents);
-      setHistories({ "24h": h24, "7d": h7d, "30d": h30d });
+      setHistories({ "24h": h24, "7d": h7d, "30d": h30d, "90d": h90d });
       setError(false);
     } catch {
       setError(true);
@@ -87,7 +89,7 @@ export default function Home() {
           Verificamos automaticamente se o sistema esta no ar, lento ou fora do ar a cada 3 minutos
           com 4 camadas: acesso ao servidor, portal publico, tela de login e login completo.
         </p>
-        <UptimeBars history={histories["24h"]} stats={stats} />
+        <UptimeBars history={histories["90d"]} stats={stats} />
         <ResponseTimeChart histories={histories} />
         <LayerDetails layers={status?.layers} histories={histories} />
         <IncidentsList incidents={incidents} />
