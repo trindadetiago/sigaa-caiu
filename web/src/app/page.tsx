@@ -89,7 +89,7 @@ export default function Home() {
           Verificamos automaticamente se o sistema esta no ar, lento ou fora do ar a cada 3 minutos
           com 4 camadas: acesso ao servidor, portal publico, tela de login e login completo.
         </p>
-        <UptimeBars history={histories["90d"]} stats={stats} />
+        <UptimeBars history={histories["90d"]} stats={stats} incidents={incidents} />
         <ResponseTimeChart histories={histories} />
         <LayerDetails layers={status?.layers} histories={histories} />
         <IncidentsList incidents={incidents} />

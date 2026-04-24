@@ -1,10 +1,11 @@
 "use client";
 
-import type { HistoryResponse, StatsResponse, Check } from "@/lib/types";
+import type { HistoryResponse, StatsResponse, Check, Incident } from "@/lib/types";
 
 interface Props {
   history: HistoryResponse | null;
   stats: StatsResponse | null;
+  incidents: Incident[] | null;
 }
 
 function groupChecksByDay(checks: Check[]): Map<string, Check[]> {
@@ -48,10 +49,20 @@ const BAR_COLORS = {
   empty: "bg-neutral-200",
 };
 
-export function UptimeBars({ history, stats }: Props) {
+function hasIncidentOnDay(date: string, incidents: Incident[]): boolean {
+  for (const inc of incidents) {
+    const start = inc.started_at.slice(0, 10);
+    const end = (inc.ended_at ?? inc.started_at).slice(0, 10);
+    if (date >= start && date <= end) return true;
+  }
+  return false;
+}
+
+export function UptimeBars({ history, stats, incidents }: Props) {
   // Build 90 days of bars (most status pages show ~90 days)
   const days: { date: string; status: "online" | "degraded" | "offline" | "empty" }[] = [];
   const checksMap = history ? groupChecksByDay(history.checks) : new Map();
+  const incidentList = incidents ?? [];
 
   for (let i = 89; i >= 0; i--) {
     const d = new Date();
@@ -60,7 +71,12 @@ export function UptimeBars({ history, stats }: Props) {
     const dayChecks = checksMap.get(dateStr);
 
     if (dayChecks && dayChecks.length > 0) {
-      days.push({ date: dateStr, status: dayStatus(dayChecks) });
+      // If a confirmed incident (from the incidents table) overlapped this day, it's red.
+      if (hasIncidentOnDay(dateStr, incidentList)) {
+        days.push({ date: dateStr, status: "offline" });
+      } else {
+        days.push({ date: dateStr, status: dayStatus(dayChecks) });
+      }
     } else {
       days.push({ date: dateStr, status: "empty" });
     }
