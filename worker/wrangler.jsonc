@@ -8,7 +8,7 @@
     "hint": "sam"
   },
   "triggers": {
-    "crons": ["*/3 * * * *"]
+    "crons": ["* * * * *"]
   },
   "d1_databases": [
     {

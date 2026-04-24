@@ -11,6 +11,19 @@ export default {
     env: Env,
     ctx: ExecutionContext
   ): Promise<void> {
+    const now = new Date();
+    const minute = now.getUTCMinutes();
+
+    // Cron fires every minute. Normal cadence = every 3 min.
+    // But if the last check was offline (unconfirmed), run every minute
+    // so we can confirm or dismiss faster.
+    if (minute % 3 !== 0) {
+      const lastChecks = await getLastNChecks(env.DB, 1);
+      const lastWasOffline =
+        lastChecks.length > 0 && lastChecks[0].status === "offline";
+      if (!lastWasOffline) return; // healthy — skip this tick
+    }
+
     const result = await performHealthCheck(env, true);
     const lastChecks = await getLastNChecks(env.DB, 2);
 
@@ -18,9 +31,8 @@ export default {
     await manageIncidents(env.DB, result, lastChecks);
     ctx.waitUntil(notifyIfNeeded(env, result, lastChecks));
 
-    // Cleanup old data once per day (when minute is 0 on the first cron of the hour)
-    const now = new Date();
-    if (now.getUTCHours() === 3 && now.getUTCMinutes() < 5) {
+    // Cleanup old data once per day
+    if (now.getUTCHours() === 3 && minute < 5) {
       ctx.waitUntil(cleanupOldChecks(env.DB));
     }
   },
