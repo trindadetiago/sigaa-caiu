@@ -123,6 +123,17 @@ Veja o README de cada modulo para instrucoes de desenvolvimento e deploy.
 
 PRs sao bem-vindos! Se encontrar um bug ou tiver uma sugestao, abra uma [issue](https://github.com/trindadetiago/sigaa-caiu/issues).
 
+## Universidades
+
+Instancias do projeto rodando por ai:
+
+| Universidade | Site |
+|---|---|
+| UFPB | [sigaacaiu.com](https://sigaacaiu.com) |
+| UFG | [ufg.sigaacaiu.com](https://ufg.sigaacaiu.com) |
+
+Quer um monitor desses pra sua universidade? Me chame em **tiagotrindade03@gmail.com** ou abra uma [issue](https://github.com/trindadetiago/sigaa-caiu/issues) — fico feliz em ajudar e adicionar sua UF na lista.
+
 ## Licenca e creditos
 
 Este projeto e open source sob a licenca [MIT](LICENSE) — voce pode usar, modificar e fazer fork livremente.
