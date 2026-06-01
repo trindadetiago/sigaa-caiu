@@ -122,3 +122,13 @@ Veja o README de cada modulo para instrucoes de desenvolvimento e deploy.
 ## Contribuindo
 
 PRs sao bem-vindos! Se encontrar um bug ou tiver uma sugestao, abra uma [issue](https://github.com/trindadetiago/sigaa-caiu/issues).
+
+## Licenca e creditos
+
+Este projeto e open source sob a licenca [MIT](LICENSE) — voce pode usar, modificar e fazer fork livremente.
+
+So peco uma coisa: **de credito**. Se voce fizer um fork ou adaptar este projeto para a sua universidade, deixe um link de volta para o repositorio original em algum lugar visivel (o rodape do site e perfeito):
+
+> Fork de [github.com/trindadetiago/sigaa-caiu](https://github.com/trindadetiago/sigaa-caiu)
+
+Feito por [Tiago Trindade](https://github.com/trindadetiago).
