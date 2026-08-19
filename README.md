@@ -133,7 +133,9 @@ Instancias do projeto rodando por ai:
 | UFG | [ufg.sigaacaiu.com](https://ufg.sigaacaiu.com) |
 | UNB | [unb.sigaacaiu.com](https://unb.sigaacaiu.com) |
 
-Quer um monitor desses pra sua universidade? Me chame em **tiagotrindade03@gmail.com** ou abra uma [issue](https://github.com/trindadetiago/sigaa-caiu/issues) — fico feliz em ajudar e adicionar sua UF na lista.
+Quer um monitor desses pra sua universidade? O guia completo esta em [REPLICANDO_NA_SUA_UNIVERSIDADE.md](REPLICANDO_NA_SUA_UNIVERSIDADE.md) — do fork ao deploy, com o que precisa ser adaptado em cada universidade.
+
+Se travar em algum passo, me chame em **tiagotrindade03@gmail.com** ou abra uma [issue](https://github.com/trindadetiago/sigaa-caiu/issues) — fico feliz em ajudar e adicionar sua UF na lista.
 
 ## Licenca e creditos
 
