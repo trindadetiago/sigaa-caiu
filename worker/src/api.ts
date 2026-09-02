@@ -1,12 +1,13 @@
 import type { Env } from "./types";
+import { getRecentIncidents, readSnapshot, readSnapshots } from "./db";
 import {
-  getLastNChecks,
-  getOpenIncident,
-  getHistory,
-  getStats,
-  getRecentIncidents,
-  getLastKnownLayers,
-} from "./db";
+  PERIODS,
+  SNAPSHOT_INCIDENTS,
+  SNAPSHOT_STATUS,
+  computeStatusPayload,
+  historyKey,
+  statsKey,
+} from "./snapshots";
 
 export async function handleApiRequest(
   request: Request,
@@ -44,65 +45,64 @@ export async function handleApiRequest(
   return json({ error: "Not found" }, 404);
 }
 
+// Every handler below reads a precomputed snapshot -- a single-row lookup that
+// the cron keeps fresh.
+//
+// Only status and incidents fall back to computing live when their snapshot is
+// missing, because both are bounded: LIMIT-ed queries against indexed columns,
+// a couple hundred rows at worst. The windowed payloads have no such bound --
+// /api/stats and a 90d history scan tens of thousands of rows each -- so they
+// deliberately fail closed instead. Serving those live is what exhausted the
+// daily row-read budget in the first place, and a request path must never be
+// able to trigger it again, however cold the database is.
+const WARMING_UP = {
+  error: "Snapshot not ready",
+  detail:
+    "This payload is precomputed by the monitor's cron and has not been built yet. Retry shortly.",
+};
+
 async function handleStatus(env: Env): Promise<Response> {
-  const lastChecks = await getLastNChecks(env.DB, 5);
-  const openIncident = await getOpenIncident(env.DB);
+  const snapshot = await readSnapshot(env.DB, SNAPSHOT_STATUS);
+  if (snapshot) return json(snapshot);
 
-  if (lastChecks.length === 0) {
-    return json({
-      status: "unknown",
-      confirmed: false,
-      lastCheck: null,
-      consecutiveFailures: 0,
-      currentIncident: openIncident,
-    });
-  }
-
-  // Count consecutive offline checks from the most recent
-  let consecutiveFailures = 0;
-  for (const check of lastChecks) {
-    if (check.status === "offline") {
-      consecutiveFailures++;
-    } else {
-      break;
-    }
-  }
-
-  const latestStatus = lastChecks[0].status;
-  // Status is "confirmed" if online/degraded, or if 2+ consecutive offline
-  const confirmed =
-    latestStatus !== "offline" || consecutiveFailures >= 2;
-
-  const layers = await getLastKnownLayers(env.DB);
-
-  return json({
-    status: latestStatus,
-    confirmed,
-    lastCheck: {
-      timestamp: lastChecks[0].timestamp,
-      status: lastChecks[0].status,
-      httpCode: lastChecks[0].http_code,
-      responseTimeMs: lastChecks[0].response_time_ms,
-    },
-    consecutiveFailures,
-    currentIncident: openIncident,
-    layers,
-  });
+  return json(await computeStatusPayload(env.DB));
 }
 
 async function handleHistory(env: Env, period: string): Promise<Response> {
-  const checks = await getHistory(env.DB, period);
-  return json({ period, checks });
+  const snapshot = await readSnapshot(env.DB, historyKey(period));
+  if (snapshot) return json(snapshot);
+
+  return warmingUp();
 }
 
 async function handleStats(env: Env): Promise<Response> {
-  const stats = await getStats(env.DB);
-  return json({ periods: stats });
+  const found = await readSnapshots(env.DB, PERIODS.map(statsKey));
+  if (found.size === 0) return warmingUp();
+
+  const periods: Record<string, unknown> = {};
+  for (const period of PERIODS) {
+    const cached = found.get(statsKey(period));
+    // A period still seeding is reported as absent rather than computed live.
+    if (cached !== undefined) periods[period] = cached;
+  }
+
+  return json({ periods });
 }
 
 async function handleIncidents(env: Env): Promise<Response> {
+  const snapshot = await readSnapshot(env.DB, SNAPSHOT_INCIDENTS);
+  if (snapshot) return json(snapshot);
+
   const incidents = await getRecentIncidents(env.DB);
   return json({ incidents });
+}
+
+// 503 rather than an empty 200: an empty payload renders as a silently blank
+// chart, and index.ts only edge-caches 200s, so this can't get pinned.
+function warmingUp(): Response {
+  const res = json(WARMING_UP, 503);
+  res.headers.set("Retry-After", "60");
+  return res;
 }
 
 const DOCS_HTML = `<!DOCTYPE html>

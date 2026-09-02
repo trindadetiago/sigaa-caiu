@@ -159,8 +159,11 @@ export async function getHistory(
          NULL as login_e2e_error
        FROM checks
        WHERE timestamp >= datetime('now', ?)
-       GROUP BY strftime('%Y-%m-%dT%H:', timestamp) ||
-         printf('%02d', (CAST(strftime('%M', timestamp) AS INTEGER) / ${bucketMinutes}) * ${bucketMinutes})
+       -- Bucket on absolute time. Grouping on the minute-within-the-hour instead
+       -- silently collapses to hourly for any bucket wider than 60 min, because
+       -- strftime('%M') never exceeds 59 -- which made the 90d view return 3x
+       -- the intended number of points.
+       GROUP BY CAST(strftime('%s', timestamp) AS INTEGER) / ${bucketMinutes * 60}
        ORDER BY timestamp ASC`
     )
     .bind(interval)
@@ -168,39 +171,54 @@ export async function getHistory(
   return result.results;
 }
 
+export interface PeriodStats {
+  uptimePercent: number;
+  avgResponseMs: number;
+  incidentCount: number;
+}
+
+// Scans every check in the window, so it belongs on the cron's refresh path --
+// never on a request path. See snapshots.ts.
+export async function getStatsForPeriod(
+  db: D1Database,
+  period: string
+): Promise<PeriodStats> {
+  const interval = periodToInterval(period);
+
+  const checksResult = await db
+    .prepare(
+      `SELECT
+         ROUND(100.0 * SUM(CASE WHEN status != 'offline' THEN 1 ELSE 0 END) / MAX(COUNT(*), 1), 2) AS uptime_pct,
+         ROUND(AVG(response_time_ms)) AS avg_ms
+       FROM checks
+       WHERE timestamp >= datetime('now', ?)`
+    )
+    .bind(interval)
+    .first<{ uptime_pct: number; avg_ms: number }>();
+
+  const incidentResult = await db
+    .prepare(
+      `SELECT COUNT(*) as count FROM incidents
+       WHERE started_at >= datetime('now', ?)`
+    )
+    .bind(interval)
+    .first<{ count: number }>();
+
+  return {
+    uptimePercent: checksResult?.uptime_pct ?? 100,
+    avgResponseMs: checksResult?.avg_ms ?? 0,
+    incidentCount: incidentResult?.count ?? 0,
+  };
+}
+
 export async function getStats(
   db: D1Database
-): Promise<Record<string, { uptimePercent: number; avgResponseMs: number; incidentCount: number }>> {
+): Promise<Record<string, PeriodStats>> {
   const periods = ["24h", "7d", "30d", "90d"] as const;
-  const stats: Record<string, { uptimePercent: number; avgResponseMs: number; incidentCount: number }> = {};
+  const stats: Record<string, PeriodStats> = {};
 
   for (const period of periods) {
-    const interval = periodToInterval(period);
-
-    const checksResult = await db
-      .prepare(
-        `SELECT
-           ROUND(100.0 * SUM(CASE WHEN status != 'offline' THEN 1 ELSE 0 END) / MAX(COUNT(*), 1), 2) AS uptime_pct,
-           ROUND(AVG(response_time_ms)) AS avg_ms
-         FROM checks
-         WHERE timestamp >= datetime('now', ?)`
-      )
-      .bind(interval)
-      .first<{ uptime_pct: number; avg_ms: number }>();
-
-    const incidentResult = await db
-      .prepare(
-        `SELECT COUNT(*) as count FROM incidents
-         WHERE started_at >= datetime('now', ?)`
-      )
-      .bind(interval)
-      .first<{ count: number }>();
-
-    stats[period] = {
-      uptimePercent: checksResult?.uptime_pct ?? 100,
-      avgResponseMs: checksResult?.avg_ms ?? 0,
-      incidentCount: incidentResult?.count ?? 0,
-    };
+    stats[period] = await getStatsForPeriod(db, period);
   }
 
   return stats;
@@ -211,6 +229,11 @@ export async function getLastKnownLayers(
 ): Promise<LastKnownLayers> {
   // Most recent non-null value for each layer, independent of the others.
   // One round-trip query per layer keeps the SQL simple; SQLite is local.
+  //
+  // Each WHERE is matched by a partial index (idx_checks_*_last) so this is a
+  // 1-row lookup. Without them SQLite walks idx_checks_timestamp backwards and
+  // reads every table row until it finds a match -- unbounded, and a full table
+  // scan for any layer that has never run.
   const latest = async <T>(selectCols: string, whereNonNull: string): Promise<T | null> =>
     db
       .prepare(
@@ -313,4 +336,89 @@ function periodToInterval(period: string): string {
     default:
       return "-24 hours";
   }
+}
+
+// --- Snapshots ---
+//
+// The API used to recompute every payload on each request, scanning up to 61k
+// rows per page load. Now the cron precomputes them here and each request is a
+// single-row lookup.
+
+export interface SnapshotMeta {
+  key: string;
+  updated_at: string;
+}
+
+export async function readSnapshot<T>(
+  db: D1Database,
+  key: string
+): Promise<T | null> {
+  const row = await db
+    .prepare(`SELECT json FROM snapshots WHERE key = ?`)
+    .bind(key)
+    .first<{ json: string }>();
+  if (!row) return null;
+  try {
+    return JSON.parse(row.json) as T;
+  } catch {
+    // A corrupt snapshot must not take the endpoint down; callers fall back
+    // to computing live.
+    return null;
+  }
+}
+
+// Single round-trip so /api/stats reads its four periods at once.
+export async function readSnapshots(
+  db: D1Database,
+  keys: string[]
+): Promise<Map<string, unknown>> {
+  if (keys.length === 0) return new Map();
+  const placeholders = keys.map(() => "?").join(", ");
+  const result = await db
+    .prepare(`SELECT key, json FROM snapshots WHERE key IN (${placeholders})`)
+    .bind(...keys)
+    .all<{ key: string; json: string }>();
+
+  const out = new Map<string, unknown>();
+  for (const row of result.results) {
+    try {
+      out.set(row.key, JSON.parse(row.json));
+    } catch {
+      // skip corrupt entries; caller treats them as missing
+    }
+  }
+  return out;
+}
+
+export async function writeSnapshot(
+  db: D1Database,
+  key: string,
+  value: unknown
+): Promise<void> {
+  const now = new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
+  await db
+    .prepare(
+      `INSERT INTO snapshots (key, json, updated_at) VALUES (?, ?, ?)
+       ON CONFLICT(key) DO UPDATE SET json = excluded.json, updated_at = excluded.updated_at`
+    )
+    .bind(key, JSON.stringify(value), now)
+    .run();
+}
+
+// Ages drive the staggered refresh schedule in snapshots.ts. Reading all of
+// them is a handful of rows, so the cron can decide what's due for free.
+export async function getSnapshotAges(
+  db: D1Database
+): Promise<Map<string, number>> {
+  const result = await db
+    .prepare(`SELECT key, updated_at FROM snapshots`)
+    .all<SnapshotMeta>();
+
+  const now = Date.now();
+  const ages = new Map<string, number>();
+  for (const row of result.results) {
+    const t = new Date(row.updated_at).getTime();
+    ages.set(row.key, Number.isFinite(t) ? now - t : Number.POSITIVE_INFINITY);
+  }
+  return ages;
 }

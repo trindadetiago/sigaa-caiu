@@ -63,8 +63,26 @@ export default function Home() {
 
   useEffect(() => {
     loadData();
-    const interval = setInterval(loadData, 60_000);
-    return () => clearInterval(interval);
+
+    // Only poll while someone is actually looking. A backgrounded tab used to
+    // keep refetching every 60s indefinitely, which is pure waste — and with a
+    // few tabs left open it was enough on its own to exhaust the API's daily
+    // database budget.
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") loadData();
+    }, 60_000);
+
+    // Catch up immediately when the tab comes back, so returning to it never
+    // shows data up to a minute stale.
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") loadData();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
   }, [loadData]);
 
   return (

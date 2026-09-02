@@ -31,3 +31,23 @@ CREATE TABLE IF NOT EXISTS incidents (
 );
 
 CREATE INDEX IF NOT EXISTS idx_incidents_started ON incidents(started_at DESC);
+
+-- Precomputed API payloads. The cron writes these; the API only reads them, so a
+-- request costs a single-row lookup instead of scanning the checks table.
+CREATE TABLE IF NOT EXISTS snapshots (
+  key        TEXT NOT NULL PRIMARY KEY,
+  json       TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+-- Partial indexes for getLastKnownLayers(): without them, "most recent non-NULL
+-- value of this layer" degrades into a full table scan once a layer has been
+-- skipped for a while. The predicates match those queries' WHERE exactly.
+CREATE INDEX IF NOT EXISTS idx_checks_reach_last
+  ON checks(timestamp DESC) WHERE reachability_status IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_checks_portal_last
+  ON checks(timestamp DESC) WHERE portal_status IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_checks_login_form_last
+  ON checks(timestamp DESC) WHERE login_form_status IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_checks_login_e2e_last
+  ON checks(timestamp DESC) WHERE login_e2e_status IS NOT NULL;
