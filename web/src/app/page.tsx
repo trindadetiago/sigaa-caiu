@@ -39,26 +39,39 @@ export default function Home() {
       : null;
 
   const loadData = useCallback(async () => {
-    try {
-      const [statusRes, statsRes, incidentsRes, h24, h7d, h30d, h90d] =
-        await Promise.all([
-          fetchStatus(),
-          fetchStats(),
-          fetchIncidents(),
-          fetchHistory("24h"),
-          fetchHistory("7d"),
-          fetchHistory("30d"),
-          fetchHistory("90d"),
-        ]);
+    // allSettled, not all: the history and stats endpoints answer 503 while the
+    // API is still precomputing a payload it hasn't built yet. That's normal on
+    // a cold start and clears within minutes, so one unavailable chart must not
+    // blank the whole page. Anything that fails keeps its previous value.
+    const [statusRes, statsRes, incidentsRes, h24, h7d, h30d, h90d] =
+      await Promise.allSettled([
+        fetchStatus(),
+        fetchStats(),
+        fetchIncidents(),
+        fetchHistory("24h"),
+        fetchHistory("7d"),
+        fetchHistory("30d"),
+        fetchHistory("90d"),
+      ]);
 
-      setStatus(statusRes);
-      setStats(statsRes);
-      setIncidents(incidentsRes.incidents);
-      setHistories({ "24h": h24, "7d": h7d, "30d": h30d, "90d": h90d });
-      setError(false);
-    } catch {
-      setError(true);
-    }
+    const value = <T,>(r: PromiseSettledResult<T>): T | null =>
+      r.status === "fulfilled" ? r.value : null;
+
+    if (statusRes.status === "fulfilled") setStatus(statusRes.value);
+    if (statsRes.status === "fulfilled") setStats(statsRes.value);
+    if (incidentsRes.status === "fulfilled")
+      setIncidents(incidentsRes.value.incidents);
+
+    setHistories((prev) => ({
+      "24h": value(h24) ?? prev["24h"],
+      "7d": value(h7d) ?? prev["7d"],
+      "30d": value(h30d) ?? prev["30d"],
+      "90d": value(h90d) ?? prev["90d"],
+    }));
+
+    // Only the current status failing means we genuinely can't reach the
+    // monitor — that's the one the hero banner reports on.
+    setError(statusRes.status === "rejected");
   }, []);
 
   useEffect(() => {
