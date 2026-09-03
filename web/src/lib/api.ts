@@ -8,7 +8,12 @@ import type {
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8787";
 
 async function fetchApi<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`);
+  // The API is edge-cached for 60s, but the zone rewrites Cache-Control to a
+  // 4h browser TTL on a cache hit — which would freeze a "is it down right
+  // now?" page for four hours. no-store skips the browser's own cache without
+  // skipping Cloudflare's: these requests still hit the edge, so polling costs
+  // the origin (and the database) nothing.
+  const res = await fetch(`${API_BASE}${path}`, { cache: "no-store" });
   if (!res.ok) {
     throw new Error(`API error: ${res.status}`);
   }
